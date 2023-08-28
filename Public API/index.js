@@ -1,28 +1,27 @@
-import express from "express";
-import bodyParser from "body-parser";
-import axios from "axios";
-
+const express = require('express');
+const axios = require('axios');
 const app = express();
-const port = 3000;
 
-app.use(express.static("public"));
-app.use(bodyParser.urlencoded({ extended: true }));
+app.set('view engine', 'ejs');
 
-app.get("/", async (req, res) => {
+app.get('/', async (req, res) => {
     try {
-        const response = await axios.get("https://api.blockchain.com/v3/#/unauthenticated/getTickers");
-        const result = response.data;
-        console.log(result);
-        res.render("index.ejs", { data: result });
-    } catch (error) {
-        console.error("Failed to make request:", error.message);
-        res.render("index.ejs", {
-          error: error.message,
-        });
-    }
-})
+        const response = await axios.get('https://api.blockchain.com/v3/exchange/tickers');
+        const data = response.data;
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+        // Sort the data by the 24-hour volume in descending order.
+        const sortedData = data.filter(ticker => ticker.symbol.includes('-USD') && ticker.volume_24h > 0)
+                               .sort((a, b) => b.volume_24h - a.volume_24h)
+                               .slice(0, 10);
+
+        res.render('index', { tickers: sortedData });
+    } catch (error) {
+        console.error("Error fetching data:", error);
+        res.status(500).send('Error fetching data from Blockchain');
+    }
 });
 
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
